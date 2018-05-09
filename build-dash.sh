@@ -1,49 +1,25 @@
 #!/bin/sh
 
-## Install dependencies
+# sudo -y add-apt-repository ppa:bitcoin/bitcoin
+# sudo apt-get update
 
-sudo -y apt-get install libboost-system-dev libboost-filesystem-dev libboost-chrono-dev libboost-program-options-dev libboost-test-dev libboost-thread-dev
-sudo -y add-apt-repository ppa:bitcoin/bitcoin
-sudo apt-get update
-sudo -y apt-get install libdb4.8-dev libdb4.8++-dev
+# checkAndInstallPackage (libdb4.8-dev) 
+# checkAndInstallPackage (libdb4.8++-dev)
 
-## Install Berkeley db
+git clone https://github.com/nakulchawla09/dash.git 
+git checkout shard
 
-# Pick some path to install BDB to, here we create a directory within the dash directory
-BDB_PREFIX="${DASH_ROOT}/db4"
-mkdir -p $BDB_PREFIX
+# Build dependencies
 
-# Fetch the source and verify that it is not tampered with
-wget 'http://download.oracle.com/berkeley-db/db-4.8.30.NC.tar.gz'
-echo '12edc0df75bf9abd7f82f821795bcee50f42cb2e5f76a6a281b85732798364ef  db-4.8.30.NC.tar.gz' | sha256sum -c
-# -> db-4.8.30.NC.tar.gz: OK
-tar -xzvf db-4.8.30.NC.tar.gz
+cd dash/depends
+make NO_QT=1
 
-# Build the library and install to our prefix
-cd db-4.8.30.NC/build_unix/
-#  Note: Do a static build so that it can be embedded into the executable, instead of having to find a .so at runtime
-../dist/configure --enable-cxx --disable-shared --with-pic --prefix=$BDB_PREFIX
-sudo make install
-cd ../../
+# Configure Dash Core for static build
 
-rm -rf db*
-
-# git clone https://github.com/nakulchawla09/dash.git
-
-# Configure Dash Core to use our own-built instance of BDB
-
-cd dash
+cd ..
 ./autogen.sh
-./configure LDFLAGS="-L${BDB_PREFIX}/lib/" CPPFLAGS="-I${BDB_PREFIX}/include/" # (other args...)
+./configure --without-gui --disable-tests --prefix=$PWD/depends/x86_64-pc-linux-gnu --enable-glibc-back-compat --enable-reduce-exports LDFLAGS=-static-libstdc++ --enable-static --disable-wallet
 make
 strip src/dashd src/dash-cli src/dash-tx
 sudo make install
-
-cd ..
-
-# rm -rf dash
-
-cp /usr/local/bin/dashd .
-cp /usr/local/bin/dash-cli .
-cp /usr/local/bin/dash-tx .
 
